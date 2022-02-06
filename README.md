@@ -13,11 +13,11 @@ This guide will always remain free, so I would really appreciate it if you reach
 
 - [Introduction](#introduction)
 - [Getting Started](#getting-started)
-- Locally Debugging your Game Server Build
-- Deploying your Container
-- Hosting your Game Server
-- Standard Hosting
-- Hosting for WebGL Games
+- [Locally Debugging your Game Server Build](#locally-debugging-your-game-server-build)
+- [Deploying your Container](#deploying-your-container)
+- [Hosting your Game Server](#hosting-your-game-server)
+- [Standard Hosting](#standard-hosting)
+- [Hosting for WebGL Games](#hosting-for-webgl-games)
 
 # Introduction
 
@@ -42,11 +42,13 @@ Here are the initial steps:
 - Follow the steps to add the Editor Extension as a package in your Unity project,
 - Create an account on Playfab.com,
 - Login to the extension with your PlayFab account,
-- Choose the title you created in the PlayFab Editor Extension, after creating a title in PlayFab’s dashboard
+- Choose the title you created in the PlayFab Editor Extension, after creating a title in PlayFab’s dashboard,
+- Hit "Install PlayFab SDK",
 - Add `ENABLE_PLAYFABSERVER_API` to your Scripting Define symbols in your Unity’s player settings
 
-PlayFab allows you to create different types of servers: Either a Windows or Linux based server.
+![image](https://user-images.githubusercontent.com/32911377/152686321-12ff572a-9415-4287-8399-856ced30b4d6.png)
 
+PlayFab allows you to create different types of servers: Either a Windows or Linux based server.
 With Windows, you can run your server as either a process or a container. With Linux, you can only run it as a linux container.
 
 I discourage using Windows (either process or containers) for starting out, unless you’re really familiar with it. Anything Unix based is easier to use and cheaper (especially by way of servers).
@@ -57,21 +59,18 @@ If you’re not familiar with what Docker is, here’s a [guide](https://docs.do
 
 ## Locally Debugging your Game Server Build
 
-[Link to Microsoft’s Documentation]
+Here's the [link](https://docs.microsoft.com/en-us/gaming/playfab/features/multiplayer/servers/locally-debugging-game-servers-and-integration-with-playfab) to the official documentation on local debugging. However, it is tech-stack agnostic and gives you multiple options (Choosing between Windows & Linux containers.) My guide focuses explicity on Unity server builds with Linux containers.
 
-First, grab the PlayFab SDK.
-
-Then, grab the PlayFab GSDK. Place the MultiplayerAgent in your PlayFabSDK folder. 
-
-Make sure you have Mirror’s NetworkManager (or the equivalent if you’re not using Mirror) attached to a GameObject.
-
- 
+Necessities
+- Assuming you've already installed the PlayFab SDK from the Editor Extension above (if not, do it now),
+- Grab the PlayFab GSDK from [here](https://github.com/PlayFab/gsdk/tree/master/UnityGsdk/Assets/PlayFabSdk). Place the MultiplayerAgent folder in your own PlayFab SDK folder,
+- Make sure you have Mirror’s NetworkManager (or the equivalent if you’re not using Mirror) attached to a GameObject of your choice. 
 
 Create a new GameObject, call it `AgentListener` (or whatever you like). Add a script named `AgentListener.cs` on it as well.
 
 ```csharp
 public class AgentListener : MonoBehaviour {
-	private void Start ()
+    private void Start ()
     {
 #if UNITY_SERVER
         PlayFabMultiplayerAgentAPI.Start();
@@ -86,19 +85,29 @@ public class AgentListener : MonoBehaviour {
 You can also add these callbacks if you want. I personally had something like this (Set this up in `Start()` again):
 
 ```csharp
-        PlayFabMultiplayerAgentAPI.IsDebugging = Debugging;
-        PlayFabMultiplayerAgentAPI.OnMaintenanceCallback += OnMaintenance;
-        PlayFabMultiplayerAgentAPI.OnShutDownCallback += OnShutdown;
-        PlayFabMultiplayerAgentAPI.OnServerActiveCallback += OnServerActive;
-        PlayFabMultiplayerAgentAPI.OnAgentErrorCallback += OnAgentError;
 
-        UnityNetworkServer.Instance.OnPlayerAdded.AddListener(OnPlayerAdded);
-        UnityNetworkServer.Instance.OnPlayerRemoved.AddListener(OnPlayerRemoved);
+  private void Start() {
+   // Rest of the code from above
+   PlayFabMultiplayerAgentAPI.IsDebugging = Debugging;
+   PlayFabMultiplayerAgentAPI.OnMaintenanceCallback += OnMaintenance;
+   PlayFabMultiplayerAgentAPI.OnShutDownCallback += OnShutdown;
+   PlayFabMultiplayerAgentAPI.OnServerActiveCallback += OnServerActive;
+   PlayFabMultiplayerAgentAPI.OnAgentErrorCallback += OnAgentError;
+  }
+
+
+public void OnMaintenance() { }
+
+public void OnShutdown() { }
+
+public void OnServerActive() { }
+
+public void OnAgentError() { }
 ```
 
 Setup the transport of your choice (for example in Mirror, a popular one is KCP transport). Set 7777 in the `Port` field of the transport you're using.
 
-Build your server. (Make sure it’s Linux x86_64).
+Build your server. (Make sure it’s `PC, Mac & Linux Standalone`->`Linux x86_64`).
 
 Go to the folder where your game server is present.
 
@@ -106,6 +115,7 @@ Add a Dockerfile like so:
 `touch Dockerfile`
 
 Your folder should now look like this:
+
 ![image](https://user-images.githubusercontent.com/32911377/152561441-eaa977ed-1248-4ec0-bebc-c3421672f657.png)
 
 Add the following to your Dockerfile:
@@ -122,22 +132,66 @@ CMD ["/game/UnityServer.x86_64", "-nographics", "-batchmode"]
 You need the second line to install certificates, in case you want to be able to talk to SDKs that talk over HTTPS, such as AWS (I had to do this in my case).
 
 You’re all setup now. If you build this folder as a docker image and run it as a container, you’re free to connect as a client (either from your Unity Editor, or a standalone build on your machine) on IP `127.0.0.1` and port `56100`.
-
 Remember, when you build your server, port must be the server port you want to expose (in our case, 7777). When you connect as a client, use the Connecting Port (in our case, 56100).
-
 To test, you want to grab the PlayFabVMAgent from here. This is used to test running your container locally. If your client (let’s assume your Unity Editor) is able to connect to this, then that confirms your integration is working. 
 
+`cd` into your PlayFabVM agent folder in PowerShell, and run `SetupLinuxContainersOnWindows.ps1`. This sets up the docker network you need for PlayFab to run. 
 After extracting the VM agent, `cd` into the folder and open the `Multiplayersettings.json` file. Make sure it looks like this:
 
-[File screenshot]
+```{
+    "RunContainer": true,
+    "OutputFolder": "C:\\output\\UnityServerLinux",
+    "NumHeartBeatsForActivateResponse": 5,
+    "NumHeartBeatsForTerminateResponse": 150,
+    "AgentListeningPort": 56001,
+    "GameCertificateDetails": [],
+    "PortMappingsList": [
+        [
+            {
+                "NodePort": 56100,
+                "GamePort": {
+                    "Name": "game_port",
+                    "Number": 7777,
+                    "Protocol": "UDP"
+                }
+            },
+            {
+                "NodePort": 56200,
+                "GamePort": {
+                    "Name": "game_port_2",
+                    "Number": 7778,
+                    "Protocol": "TCP"
+                }
+            }
+        ]
+    ],
+    "ContainerStartParameters": {
+        "ImageDetails": {
+            "Registry": "myregistry.io",
+            "ImageName": "linuxgameserver",
+            "ImageTag": "0.1",
+            "Username": "",
+            "Password": ""
+        }
+    },
 
+    "SessionConfig": {
+        "SessionId": "ba67d671-512a-4e7d-a38c-2329ce181946",
+        "SessionCookie": null,
+        "InitialPlayers": ["Player1", "Player2"]
+    },
+    "TitleId": "",
+    "BuildId": "00000000-0000-0000-0000-000000000000",
+    "Region": "WestUs"
+}
+```
+
+Note the `PortMappingsList`. If your game server runs with multiple transports (in my case, Mirror's KCP (UDP-based) for all devices and Mirror's SimpleWebTransport (TCP-based) for WebGL clients).
 Then build your docker image, after `cd`ing into your game server folder.
-
-`docker build -t myregistry.io/linuxgameserver:v1 .`
-
-`cd` back into your PlayFabVM agent folder in PowerShell, and run `SetupLinuxContainersOnWindows.ps1`. This sets up the docker network you need for PlayFab to run. 
+`docker build -t myregistry.io/linuxgameserver:0.1 .`
 
 You can verify this worked by typing `docker network ls`. You will see `playfab` as a network that was just created.
+![image](https://user-images.githubusercontent.com/32911377/152686580-5e889ea4-d893-4b98-87bf-ce6033761326.png)
 
 Finally, you can run `LocalMultiplayerAgent.exe -lcow`. This starts your image as a container, which is responsible for starting your game server locally.
 
@@ -152,29 +206,44 @@ You should see your PowerShell transitioning between the following states:
 - Active
 - Terminated
 
+![image](https://user-images.githubusercontent.com/32911377/152686815-ab78540f-b9f2-4a64-b0ab-e1152fb7e59a.png)
+
 When your container is in the `Active` state, that’s when you can connect as a client.
 
 ## Deploying your Container
+Microsoft's link to deploying a game build is [here](https://docs.microsoft.com/en-us/gaming/playfab/features/multiplayer/servers/deploying-playfab-multiplayer-server-builds).
+You can continue to follow this guide to get up and running quickly, but use theirs for a detailed breakdown of things you may need information of.
 
-[Link to Microsoft’s documentation]
+Requirements
+- WSL2,
+- Azure Container Registry details,
+- Docker
 
 You can get your customer id, username and password under `Server Details` when creating a new build. Search for “Upload to container registry”.
 
+You need WSL2 setup to be able to push your docker image onto Microsoft's Azure container registry. There are plenty of guides online to set it up, I will leave it to you, the reader.
+
 Assuming you’ve setup WSL2 at this point, navigate to where you have your game server’s image in an Ubuntu (or other Linux-distro based) terminal, and run the following:
 
+Open your Windows Terminal, and open a new Ubuntu 20.04 (or whatever distro you setup for WSL) shell. Navigate to where your game server build is. Will look like this:
+![image](https://user-images.githubusercontent.com/32911377/152687039-42073c29-9600-42c8-96d2-57a7081c0c46.png)
+
+When here, run the following commands: 
 **Commands to build and host your new server:**
 
 Login to your Azure Container Registry:
+
 `docker login yourcustomerid.azurecr.io`
 
 Build your local container:
+
 `docker build -t yourcustomerid.azurecr.io/containername:v1 .`
 
 Push your container into their container registry:
+
 `docker push yourcustomerid.azurecr.io/containername:v1`
 
 ## Hosting your Game Server
-
 To enable the Multiplayer Servers feature, you need a credit card first. Once you put in your details, you will be allowed to create new server builds.
 
 Next, we shall create a build.
@@ -186,6 +255,7 @@ In here, do the following steps:
 * Give your build a suitable name,
 * Pick Linux Containers,
 * Pick the virtual machine type (Dasv4 — 2 cores is fine for now) and pick 1 server per machine (You can vary these after you do significant load testing.),
+* Pick the container you just deployed onto the Azure Container Registry,
 * You can set Standby and Max servers to 1 for now, for testing purposes,
 * Expose ports 7777 on UDP, (this will vary depending on what you chose the port to be when creating your server build),
 * Add a region. North Europe/America is fine since you get 750 free hours for testing purposes,
@@ -203,7 +273,7 @@ Grab the IP and Port that it gives you, start your game client in your Editor or
 
 Standard hosting requires that you connect to an IP (or Fully Qualified Domain Name [FQDN]) and Port given to you by PlayFab’s newly spun up server as a client. This is achievable on all types of devices, including but not limited to phone, consoles, PC etc.
 
-## Web Hosting (For WebGL Games)
+## Hosting For WebGL Games
 
 When you create a Unity WebGL client however (to put your game on the web), you’ll have an issue because a client cannot connect directly to an IP and Port **on an https domain**. (You can connect if your website is not Secure, however). 
 
