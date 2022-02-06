@@ -11,8 +11,8 @@ This guide will always remain free, so I would really appreciate it if you reach
 
 ## Table of Contents
 
-- [Introduction](##Introduction)
-- [Getting Started](##Getting-Started)
+- [Introduction](#introduction)
+- [Getting Started](#getting-started)
 - Locally Debugging your Game Server Build
 - Deploying your Container
 - Hosting your Game Server
