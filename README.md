@@ -190,6 +190,8 @@ Note the `PortMappingsList`. If your game server runs with multiple transports (
 Then build your docker image, after `cd`ing into your game server folder.
 `docker build -t myregistry.io/linuxgameserver:0.1 .`
 
+Then run `SetupLinuxContainersOnWindows.ps1`. This will create a docker network for you by the name of PlayFab.
+
 You can verify this worked by typing `docker network ls`. You will see `playfab` as a network that was just created.
 ![image](https://user-images.githubusercontent.com/32911377/152686580-5e889ea4-d893-4b98-87bf-ce6033761326.png)
 
