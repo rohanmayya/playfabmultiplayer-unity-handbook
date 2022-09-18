@@ -133,7 +133,7 @@ You need the second line to install certificates, in case you want to be able to
 
 You’re all setup now. If you build this folder as a docker image and run it as a container, you’re free to connect as a client (either from your Unity Editor, or a standalone build on your machine) on IP `127.0.0.1` and port `56100`.
 Remember, when you build your server, port must be the server port you want to expose (in our case, 7777). When you connect as a client, use the Connecting Port (in our case, 56100).
-To test, you want to grab the PlayFabVMAgent from here. This is used to test running your container locally. If your client (let’s assume your Unity Editor) is able to connect to this, then that confirms your integration is working. 
+To test, you want to grab the PlayFabVMAgent from [here](https://github.com/PlayFab/MpsAgent). This is used to test running your container locally. If your client (let’s assume your Unity Editor) is able to connect to this, then that confirms your integration is working. 
 
 `cd` into your PlayFabVM agent folder in PowerShell, and run `SetupLinuxContainersOnWindows.ps1`. This sets up the docker network you need for PlayFab to run. 
 After extracting the VM agent, `cd` into the folder and open the `Multiplayersettings.json` file. Make sure it looks like this:
